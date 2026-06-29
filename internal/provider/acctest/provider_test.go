@@ -3,7 +3,7 @@ package acctest
 import (
 	"context"
 	"fmt"
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/go-version"

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"

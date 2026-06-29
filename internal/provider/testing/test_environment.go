@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"net/http"
@@ -16,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 )
@@ -255,33 +254,25 @@ func (te *TestEnvironment) waitForController(ctx context.Context) error {
 }
 
 func (te *TestEnvironment) newTestClient() (unifi.Client, error) {
-	const user = "admin"
-	const password = "admin"
-	var err error
-	if err = os.Setenv("UNIFI_USERNAME", user); err != nil {
+	apiKey := os.Getenv("UNIFI_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("UNIFI_API_KEY must be set for acceptance tests")
+	}
+
+	if err := os.Setenv("UNIFI_INSECURE", "true"); err != nil {
 		return nil, err
 	}
 
-	if err = os.Setenv("UNIFI_PASSWORD", password); err != nil {
-		return nil, err
-	}
-
-	if err = os.Setenv("UNIFI_INSECURE", "true"); err != nil {
-		return nil, err
-	}
-
-	if err = os.Setenv("UNIFI_API", te.Endpoint); err != nil {
+	if err := os.Setenv("UNIFI_API", te.Endpoint); err != nil {
 		return nil, err
 	}
 
 	client, err := unifi.NewClient(&unifi.ClientConfig{
 		URL:            te.Endpoint,
-		User:           user,
-		Password:       password,
-		VerifySSL:      false,
-		RememberMe:     true,
+		APIKey:         apiKey,
+		SkipVerifySSL:  true,
 		ValidationMode: unifi.DisableValidation,
 		Logger:         unifi.NewDefaultLogger(unifi.WarnLevel),
 	})
-	return base.NewRetryableUnifiClient(client), err
+	return client, err
 }

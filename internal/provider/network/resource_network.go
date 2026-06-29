@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/go-cty/cty"

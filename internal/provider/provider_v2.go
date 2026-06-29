@@ -39,8 +39,6 @@ type unifiProvider struct {
 }
 
 type unifiProviderModel struct {
-	Username   types.String `tfsdk:"username"`
-	Password   types.String `tfsdk:"password"`
 	APIKey     types.String `tfsdk:"api_key"`
 	APIUrl     types.String `tfsdk:"api_url"`
 	Site       types.String `tfsdk:"site"`
@@ -56,15 +54,6 @@ func (p *unifiProvider) Metadata(_ context.Context, _ provider.MetadataRequest, 
 func (p *unifiProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"username": schema.StringAttribute{
-				MarkdownDescription: ProviderUsernameDescription,
-				Optional:            true,
-			},
-			"password": schema.StringAttribute{
-				MarkdownDescription: ProviderPasswordDescription,
-				Optional:            true,
-				Sensitive:           true,
-			},
 			"api_key": schema.StringAttribute{
 				MarkdownDescription: ProviderAPIKeyDescription,
 				Optional:            true,
@@ -128,20 +117,12 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	// with Terraform configuration value if set.
 
 	// Check environment variables
-	username := utils.GetAnyStringEnv("UNIFI_USERNAME")
-	password := utils.GetAnyStringEnv("UNIFI_PASSWORD")
 	apiKey := utils.GetAnyStringEnv("UNIFI_API_KEY")
 	apiUrl := utils.GetAnyStringEnv("UNIFI_API")
 	site := utils.GetAnyStringEnv("UNIFI_SITE")
 	insecure := utils.GetAnyBoolEnv("UNIFI_INSECURE")
 	maxRetries := utils.GetAnyIntEnv("UNIFI_MAX_RETRIES")
 
-	if !cfg.Username.IsNull() {
-		username = cfg.Username.ValueString()
-	}
-	if !cfg.Password.IsNull() {
-		password = cfg.Password.ValueString()
-	}
 	if !cfg.APIKey.IsNull() {
 		apiKey = cfg.APIKey.ValueString()
 	}
@@ -157,10 +138,8 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 	if !cfg.MaxRetries.IsNull() {
 		maxRetries = int(cfg.MaxRetries.ValueInt64())
 	}
-	if apiKey != "" && (username != "" || password != "") {
-		resp.Diagnostics.AddAttributeError(path.Root("api_key"), "Two authentication methods configured", "Only one of `username`/`password` or `api_key` can be set")
-	} else if apiKey == "" && (username == "" || password == "") {
-		resp.Diagnostics.AddAttributeError(path.Root("api_key"), "Missing UniFi API credentials", "Either `username`/`password` or `api_key` must be set")
+	if apiKey == "" {
+		resp.Diagnostics.AddAttributeError(path.Root("api_key"), "Missing UniFi API Key", "The `api_key` attribute must be set")
 	}
 	if apiUrl == "" {
 		resp.Diagnostics.AddAttributeError(path.Root("api_url"), "Missing UniFi API URL", "The `api_url` attribute must be set")
@@ -172,8 +151,6 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		site = "default" // set default site if not provided
 	}
 	c, err := base.NewClient(&base.ClientConfig{
-		Username:   username,
-		Password:   password,
 		ApiKey:     apiKey,
 		Url:        apiUrl,
 		Site:       site,

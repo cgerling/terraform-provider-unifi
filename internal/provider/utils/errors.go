@@ -2,7 +2,7 @@ package utils
 
 import (
 	"errors"
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"reflect"
 	"strings"

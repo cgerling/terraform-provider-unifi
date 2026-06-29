@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/plancheck"
@@ -71,8 +71,7 @@ func SiteAndIDImportStateIDFunc(resourceName string) func(*terraform.State) (str
 // PreCheck checks if provided environment variables are set. If not, it will fail the test.
 func PreCheck(t *testing.T) {
 	variables := []string{
-		"UNIFI_USERNAME",
-		"UNIFI_PASSWORD",
+		"UNIFI_API_KEY",
 		"UNIFI_API",
 	}
 

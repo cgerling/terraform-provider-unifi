@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"fmt"
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -18,13 +16,10 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 )
 
 type ClientConfig struct {
-	Username       string
-	Password       string
 	ApiKey         string
 	Url            string
 	Site           string
@@ -39,13 +34,12 @@ type ClientConfig struct {
 
 func NewClient(cfg *ClientConfig) (*Client, error) {
 	config := &unifi.ClientConfig{
-		URL:                      cfg.Url,
-		User:                     cfg.Username,
-		Password:                 cfg.Password,
-		APIKey:                   cfg.ApiKey,
+		URL:                     cfg.Url,
+		APIKey:                  cfg.ApiKey,
+		SkipVerifySSL:           cfg.Insecure,
 		HttpRoundTripperProvider: cfg.HttpConfigurer,
-		ValidationMode:           unifi.DisableValidation,
-		Logger:                   unifi.NewDefaultLogger(unifi.WarnLevel),
+		ValidationMode:          unifi.DisableValidation,
+		Logger:                  unifi.NewDefaultLogger(unifi.WarnLevel),
 	}
 	// Opt-in retrying transport for transient controller responses. When
 	// MaxRetries == 0 the provider is left untouched so behavior is identical to
@@ -64,15 +58,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 			return newRetryRoundTripper(next, maxRetries)
 		}
 	}
-	if cfg.Username != "" && cfg.Password != "" {
-		config.User = cfg.Username
-		config.Password = cfg.Password
-		config.RememberMe = true
-	} else {
-		config.APIKey = cfg.ApiKey
-	}
 	unifiClient, err := unifi.NewClient(config)
-
 	if err != nil {
 		return nil, err
 	}
@@ -82,49 +68,11 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		return nil, err
 	}
 	c := &Client{
-		Client:  NewRetryableUnifiClient(unifiClient),
+		Client:  unifiClient,
 		Site:    cfg.Site,
 		Version: version.Must(version.NewVersion(unifiClient.Version())),
 	}
-	if cfg.ApiKey != "" && !c.SupportsApiKeyAuthentication() {
-		return nil, fmt.Errorf("API key authentication is not supported on this controller version: %s, you must be on %s or higher", c.Version, ControllerVersionApiKeyAuth)
-	}
 	return c, nil
-}
-
-func NewRetryableUnifiClient(client unifi.Client) unifi.Client {
-	return &RetryableUnifiClient{
-		Client:     client,
-		loginMutex: sync.Mutex{},
-	}
-}
-
-type RetryableUnifiClient struct {
-	unifi.Client
-	loginMutex sync.Mutex
-}
-
-func (c *RetryableUnifiClient) relogin(err error) error {
-	c.loginMutex.Lock()
-	defer c.loginMutex.Unlock()
-	loginErr := c.Client.Login()
-	if loginErr != nil {
-		return fmt.Errorf("Tried relogging in after %w, but failed: %w.", err, loginErr)
-	} else {
-		return nil
-	}
-}
-
-func (c *RetryableUnifiClient) Do(ctx context.Context, method string, apiPath string, reqBody interface{}, respBody interface{}) error {
-	err := c.Client.Do(ctx, method, apiPath, reqBody, respBody)
-	if err != nil && utils.IsServerErrorStatusCode(err, 401) {
-		err := c.relogin(err)
-		if err != nil {
-			return err
-		}
-		return c.Client.Do(ctx, method, apiPath, reqBody, respBody)
-	}
-	return err
 }
 
 type Client struct {

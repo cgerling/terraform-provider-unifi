@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"

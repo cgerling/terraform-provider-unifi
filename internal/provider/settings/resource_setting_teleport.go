@@ -4,7 +4,7 @@ import (
 	"context"
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 	"github.com/hashicorp/terraform-plugin-framework/diag"

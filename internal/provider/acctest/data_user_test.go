@@ -8,7 +8,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )

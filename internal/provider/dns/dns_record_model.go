@@ -2,7 +2,7 @@ package dns
 
 import (
 	"context"
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
