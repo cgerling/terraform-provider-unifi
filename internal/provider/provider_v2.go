@@ -213,6 +213,7 @@ func (p *unifiProvider) Resources(_ context.Context) []func() resource.Resource 
 		settings.NewMgmtResource,
 		settings.NewUsgResource,
 		settings.NewUswResource,
+		settings.NewGlobalSwitchResource,
 	}
 }
 
