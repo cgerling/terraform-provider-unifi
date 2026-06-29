@@ -203,8 +203,15 @@ func resourceStaticRouteUpdate(ctx context.Context, d *schema.ResourceData, meta
 	req.SiteID = site
 
 	resp, err := c.UpdateRouting(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.Routing, error) {
+		return c.GetRouting(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceStaticRouteSetResourceData(resp, d, site)

@@ -519,8 +519,15 @@ func resourcePortProfileUpdate(ctx context.Context, d *schema.ResourceData, meta
 	req.SiteID = site
 
 	resp, err := c.UpdatePortProfile(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.PortProfile, error) {
+		return c.GetPortProfile(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourcePortProfileSetResourceData(resp, d, site)

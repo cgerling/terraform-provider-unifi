@@ -206,8 +206,15 @@ func resourcePortForwardUpdate(ctx context.Context, d *schema.ResourceData, meta
 	req.SiteID = site
 
 	resp, err := c.UpdatePortForward(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.PortForward, error) {
+		return c.GetPortForward(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourcePortForwardSetResourceData(resp, d, site)

@@ -426,8 +426,15 @@ func resourceDeviceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	resp, err := c.UpdateDevice(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.Device, error) {
+		return c.GetDevice(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	_, err = waitForDeviceState(ctx, d, meta, unifi.DeviceStateConnected, []unifi.DeviceState{unifi.DeviceStateAdopting, unifi.DeviceStateProvisioning}, 1*time.Minute)

@@ -161,8 +161,15 @@ func resourceFirewallGroupUpdate(ctx context.Context, d *schema.ResourceData, me
 	req.SiteID = site
 
 	resp, err := c.UpdateFirewallGroup(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.FirewallGroup, error) {
+		return c.GetFirewallGroup(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceFirewallGroupSetResourceData(resp, d, site)

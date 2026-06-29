@@ -6,6 +6,7 @@ import (
 
 	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
+	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -181,8 +182,15 @@ func resourceDynamicDNSUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	req.SiteID = site
 
 	resp, err := c.UpdateDynamicDNS(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.DynamicDNS, error) {
+		return c.GetDynamicDNS(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceDynamicDNSSetResourceData(resp, d, site)

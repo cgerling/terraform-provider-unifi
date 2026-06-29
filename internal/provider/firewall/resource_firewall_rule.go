@@ -425,8 +425,15 @@ func resourceFirewallRuleUpdate(ctx context.Context, d *schema.ResourceData, met
 	req.SiteID = site
 
 	resp, err := c.UpdateFirewallRule(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.FirewallRule, error) {
+		return c.GetFirewallRule(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceFirewallRuleSetResourceData(resp, d, site)

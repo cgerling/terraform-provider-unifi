@@ -549,8 +549,15 @@ func resourceWLANUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 	req.SiteID = site
 
 	resp, err := c.UpdateWLAN(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.WLAN, error) {
+		return c.GetWLAN(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceWLANSetResourceData(resp, d, meta, site)

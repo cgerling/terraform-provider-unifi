@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 
 	"github.com/filipowm/go-unifi/v2/unifi"
@@ -178,8 +179,15 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interf
 		req.SiteID = existing.SiteID
 
 		resp, err = c.UpdateUser(ctx, site, req)
+		var found bool
+		resp, found, err = utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.User, error) {
+			return c.GetUser(ctx, site, req.ID)
+		})
 		if err != nil {
 			return diag.FromErr(err)
+		}
+		if !found {
+			return diag.FromErr(fmt.Errorf("user with MAC %s was not found after update", req.MAC))
 		}
 	}
 
@@ -336,8 +344,15 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 	req.SiteID = site
 
 	resp, err := c.UpdateUser(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.User, error) {
+		return c.GetUser(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceUserSetResourceData(resp, d, site)

@@ -1189,8 +1189,15 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	req.SiteID = site
 
 	resp, err := c.UpdateNetwork(ctx, site, req)
+	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.Network, error) {
+		return c.GetNetwork(ctx, site, req.ID)
+	})
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if !found {
+		d.SetId("")
+		return nil
 	}
 
 	return resourceNetworkSetResourceData(resp, d, site)
