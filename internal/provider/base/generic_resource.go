@@ -86,8 +86,12 @@ func (b *GenericResource[T]) ImportState(ctx context.Context, req resource.Impor
 	state.SetID(id)
 	state.SetSite(site)
 
-	b.read(ctx, site, state, &resp.Diagnostics)
+	found := b.read(ctx, site, state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !found {
+		resp.Diagnostics.AddError("Resource not found", "The resource was not found in the UniFi controller")
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -134,8 +138,12 @@ func (b *GenericResource[T]) Create(ctx context.Context, req resource.CreateRequ
 	// eventually-consistent) write echo. Merge above already populated the ID
 	// so the Read handler can resolve the resource.
 	if b.Handlers.ReadAfterWrite && b.Handlers.Read != nil {
-		b.read(ctx, site, plan, &resp.Diagnostics)
+		found := b.read(ctx, site, plan, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
+			return
+		}
+		if !found {
+			resp.Diagnostics.AddError("Resource not found", "The resource was not found in the UniFi controller after creation")
 			return
 		}
 		plan.SetSite(site)
@@ -144,19 +152,22 @@ func (b *GenericResource[T]) Create(ctx context.Context, req resource.CreateRequ
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func (b *GenericResource[T]) read(ctx context.Context, site string, state T, diag *diag.Diagnostics) {
+// read fetches the resource from the controller and merges it into state.
+// Returns true if the resource was found, false if it was not found (ErrNotFound).
+// Other errors are added to diagnostics.
+func (b *GenericResource[T]) read(ctx context.Context, site string, state T, diag *diag.Diagnostics) bool {
 	res, err := b.Handlers.Read(ctx, b.client, site, state.GetID())
 	if err != nil {
 		if errors.Is(err, unifi.ErrNotFound) {
-			diag.AddError("Resource not found", "The resource was not found in the UniFi controller")
-		} else {
-			diag.AddError("Error reading resource", err.Error())
+			return false
 		}
-		return
+		diag.AddError("Error reading resource", err.Error())
+		return false
 	}
 	if res != nil {
 		state.Merge(ctx, res)
 	}
+	return true
 }
 
 func (b *GenericResource[T]) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -176,9 +187,12 @@ func (b *GenericResource[T]) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	site := b.client.ResolveSite(state)
-	b.read(ctx, site, state, &resp.Diagnostics)
-
+	found := b.read(ctx, site, state, &resp.Diagnostics)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+	if !found {
+		resp.State.RemoveResource(ctx)
 		return
 	}
 	state.SetSite(site)
@@ -220,8 +234,12 @@ func (b *GenericResource[T]) Update(ctx context.Context, req resource.UpdateRequ
 	// final state reflects the GET response rather than the (possibly
 	// eventually-consistent) write echo. State already carries the ID.
 	if b.Handlers.ReadAfterWrite && b.Handlers.Read != nil {
-		b.read(ctx, site, state, &resp.Diagnostics)
+		found := b.read(ctx, site, state, &resp.Diagnostics)
 		if resp.Diagnostics.HasError() {
+			return
+		}
+		if !found {
+			resp.Diagnostics.AddError("Resource not found", "The resource was not found in the UniFi controller after update")
 			return
 		}
 		state.SetSite(site)
