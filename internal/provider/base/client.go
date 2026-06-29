@@ -45,9 +45,9 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	// MaxRetries == 0 the provider is left untouched so behavior is identical to
 	// before this feature existed (the default).
 	if cfg.MaxRetries > 0 {
+		maxRetries := cfg.MaxRetries
 		baseConfigurer := cfg.HttpConfigurer
 		insecure := cfg.Insecure
-		maxRetries := cfg.MaxRetries
 		config.HttpRoundTripperProvider = func() http.RoundTripper {
 			var next http.RoundTripper
 			if baseConfigurer != nil {
