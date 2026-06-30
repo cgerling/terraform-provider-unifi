@@ -152,9 +152,6 @@ func (b *GenericResource[T]) Create(ctx context.Context, req resource.CreateRequ
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-// read fetches the resource from the controller and merges it into state.
-// Returns true if the resource was found, false if it was not found (ErrNotFound).
-// Other errors are added to diagnostics.
 func (b *GenericResource[T]) read(ctx context.Context, site string, state T, diag *diag.Diagnostics) bool {
 	res, err := b.Handlers.Read(ctx, b.client, site, state.GetID())
 	if err != nil {
