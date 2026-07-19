@@ -3,8 +3,8 @@ package settings
 import (
 	"context"
 
-	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/go-unifi/unifi/features"
+	"github.com/filipowm/go-unifi/v2/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi/features"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -28,35 +28,6 @@ import (
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/validators"
 )
-
-// DNS Filter model.
-type DNSFilterModel struct {
-	AllowedSites types.List   `tfsdk:"allowed_sites"`
-	BlockedSites types.List   `tfsdk:"blocked_sites"`
-	BlockedTld   types.List   `tfsdk:"blocked_tld"`
-	Description  types.String `tfsdk:"description"`
-	Filter       types.String `tfsdk:"filter"`
-	Name         types.String `tfsdk:"name"`
-	NetworkID    types.String `tfsdk:"network_id"`
-}
-
-func (m *DNSFilterModel) AttributeTypes() map[string]attr.Type {
-	return map[string]attr.Type{
-		"allowed_sites": types.ListType{
-			ElemType: types.StringType,
-		},
-		"blocked_sites": types.ListType{
-			ElemType: types.StringType,
-		},
-		"blocked_tld": types.ListType{
-			ElemType: types.StringType,
-		},
-		"description": types.StringType,
-		"filter":      types.StringType,
-		"name":        types.StringType,
-		"network_id":  types.StringType,
-	}
-}
 
 // Honeypots model.
 type HoneypotModel struct {
@@ -146,9 +117,7 @@ func (m *SuppressionModel) AttributeTypes() map[string]attr.Type {
 // Main IPS model.
 type ipsModel struct {
 	base.Model
-	AdBlockedNetworks           types.List   `tfsdk:"ad_blocked_networks"`
 	AdvancedFilteringPreference types.String `tfsdk:"advanced_filtering_preference"`
-	DNSFilters                  types.List   `tfsdk:"dns_filters"`
 	EnabledCategories           types.List   `tfsdk:"enabled_categories"`
 	EnabledNetworks             types.List   `tfsdk:"enabled_networks"`
 	Honeypots                   types.List   `tfsdk:"honeypots"`
@@ -167,11 +136,9 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		MemoryOptimized:             d.MemoryOptimized.ValueBool(),
 		RestrictTorrents:            d.RestrictTorrents.ValueBool(),
 		// Initialize empty slices for arrays to avoid null values in JSON
-		AdBlockingConfigurations: []unifi.SettingIpsAdBlockingConfigurations{},
-		DNSFilters:               []unifi.SettingIpsDNSFilters{},
-		EnabledCategories:        []string{},
-		EnabledNetworks:          []string{},
-		Honeypot:                 []unifi.SettingIpsHoneypot{},
+		EnabledCategories: []string{},
+		EnabledNetworks:   []string{},
+		Honeypot:          []unifi.SettingIpsHoneypot{},
 		// Initialize suppression with empty arrays
 		Suppression: unifi.SettingIpsSuppression{
 			Alerts:    []unifi.SettingIpsAlerts{},
@@ -200,73 +167,6 @@ func (d *ipsModel) AsUnifiModel(ctx context.Context) (interface{}, diag.Diagnost
 		return nil, diags
 	}
 	model.EnabledNetworks = enabledNetworks
-
-	// Handle AdBlockedNetworks - if any networks are configured, set AdBlockingEnabled to true
-	if ut.IsDefined(d.AdBlockedNetworks) {
-		var adBlockedNetworks []string
-		diags.Append(ut.ListElementsAs(ctx, d.AdBlockedNetworks, &adBlockedNetworks)...)
-		if diags.HasError() {
-			return nil, diags
-		}
-
-		if len(adBlockedNetworks) > 0 {
-			model.AdBlockingEnabled = true
-			model.AdBlockingConfigurations = make([]unifi.SettingIpsAdBlockingConfigurations, 0, len(adBlockedNetworks))
-			for _, networkID := range adBlockedNetworks {
-				model.AdBlockingConfigurations = append(model.AdBlockingConfigurations, unifi.SettingIpsAdBlockingConfigurations{
-					NetworkID: networkID,
-				})
-			}
-		} else {
-			model.AdBlockingEnabled = false
-			model.AdBlockingConfigurations = []unifi.SettingIpsAdBlockingConfigurations{}
-		}
-	}
-
-	// Handle DNSFilters - if any filters are configured, set DNSFiltering to true
-	if ut.IsDefined(d.DNSFilters) {
-		var dnsFiltersObjects []DNSFilterModel
-		diags.Append(ut.ListElementsAs(ctx, d.DNSFilters, &dnsFiltersObjects)...)
-		if diags.HasError() {
-			return nil, diags
-		}
-
-		if len(dnsFiltersObjects) > 0 {
-			model.DNSFiltering = true
-			model.DNSFilters = make([]unifi.SettingIpsDNSFilters, 0, len(dnsFiltersObjects))
-
-			for _, filterObj := range dnsFiltersObjects {
-				version := "v4"
-				if utils.IsIPv6(filterObj.NetworkID.ValueString()) {
-					version = "v6"
-				}
-				filter := unifi.SettingIpsDNSFilters{
-					Description: filterObj.Description.ValueString(),
-					Filter:      filterObj.Filter.ValueString(),
-					Name:        filterObj.Name.ValueString(),
-					NetworkID:   filterObj.NetworkID.ValueString(),
-					Version:     version,
-				}
-
-				// Handle allowed sites
-
-				var allowedSites, blockedSites, blockedTlds []string
-				diags.Append(ut.ListElementsAs(ctx, filterObj.AllowedSites, &allowedSites)...)
-				diags.Append(ut.ListElementsAs(ctx, filterObj.BlockedSites, &blockedSites)...)
-				diags.Append(ut.ListElementsAs(ctx, filterObj.BlockedTld, &blockedTlds)...)
-				if diags.HasError() {
-					return nil, diags
-				}
-				filter.AllowedSites = allowedSites
-				filter.BlockedSites = blockedSites
-				filter.BlockedTld = blockedTlds
-				model.DNSFilters = append(model.DNSFilters, filter)
-			}
-		} else {
-			model.DNSFiltering = false
-			model.DNSFilters = []unifi.SettingIpsDNSFilters{}
-		}
-	}
 
 	// Handle honeypot
 	if ut.IsDefined(d.Honeypots) {
@@ -400,58 +300,6 @@ func (d *ipsModel) Merge(ctx context.Context, other interface{}) diag.Diagnostic
 		d.EnabledNetworks = ut.EmptyList(types.StringType)
 	}
 
-	// Handle AdBlockedNetworks - extract network IDs from AdBlockingConfigurations
-	adBlockedNetworks := make([]string, 0, len(model.AdBlockingConfigurations))
-	for _, config := range model.AdBlockingConfigurations {
-		adBlockedNetworks = append(adBlockedNetworks, config.NetworkID)
-	}
-
-	adBlockedNetworksList, diags := types.ListValueFrom(ctx, types.StringType, adBlockedNetworks)
-	if diags.HasError() {
-		return diags
-	}
-	d.AdBlockedNetworks = adBlockedNetworksList
-
-	// Handle DNSFilters
-	dnsFilters := make([]DNSFilterModel, 0)
-
-	for _, filter := range model.DNSFilters {
-		dnsFilter := DNSFilterModel{
-			Description: types.StringValue(filter.Description),
-			Filter:      types.StringValue(filter.Filter),
-			Name:        types.StringValue(filter.Name),
-			NetworkID:   types.StringValue(filter.NetworkID),
-		}
-
-		allowedSites, diags := types.ListValueFrom(ctx, types.StringType, filter.AllowedSites)
-		if diags.HasError() {
-			return diags
-		}
-		dnsFilter.AllowedSites = allowedSites
-
-		blockedSites, diags := types.ListValueFrom(ctx, types.StringType, filter.BlockedSites)
-		if diags.HasError() {
-			return diags
-		}
-		dnsFilter.BlockedSites = blockedSites
-
-		blockedTlds, diags := types.ListValueFrom(ctx, types.StringType, filter.BlockedTld)
-		if diags.HasError() {
-			return diags
-		}
-		dnsFilter.BlockedTld = blockedTlds
-
-		dnsFilters = append(dnsFilters, dnsFilter)
-	}
-
-	dnsFiltersList, diags := types.ListValueFrom(ctx, types.ObjectType{
-		AttrTypes: (&DNSFilterModel{}).AttributeTypes(),
-	}, dnsFilters)
-	if diags.HasError() {
-		return diags
-	}
-	d.DNSFilters = dnsFiltersList
-
 	// Handle honeypot
 	honeypotModels := make([]HoneypotModel, 0, len(model.Honeypot))
 	for _, honeypot := range model.Honeypot {
@@ -567,15 +415,6 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 		Attributes: map[string]schema.Attribute{
 			"id":   ut.ID(),
 			"site": ut.SiteAttribute(),
-			"ad_blocked_networks": schema.ListAttribute{
-				MarkdownDescription: "List of network IDs to enable ad blocking for. If any networks are configured, ad blocking will be automatically enabled. Each entry should be a valid network ID from your UniFi configuration. Leave empty to disable ad blocking.",
-				ElementType:         types.StringType,
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
-				},
-			},
 			"advanced_filtering_preference": schema.StringAttribute{
 				MarkdownDescription: "The advanced filtering preference for IPS. Valid values are:\n" +
 					"  * `disabled` - Advanced filtering is disabled\n" +
@@ -587,59 +426,6 @@ func (r *ipsResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *
 				},
 				Validators: []validator.String{
 					stringvalidator.OneOf("disabled", "manual"),
-				},
-			},
-			"dns_filters": schema.ListNestedAttribute{
-				MarkdownDescription: "DNS filters configuration. If any filters are configured, DNS filtering will be automatically enabled. Each filter can be applied to a specific network and provides content filtering capabilities.",
-				Optional:            true,
-				Computed:            true,
-				PlanModifiers: []planmodifier.List{
-					listplanmodifier.UseStateForUnknown(),
-				},
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"allowed_sites": schema.ListAttribute{
-							MarkdownDescription: "List of allowed sites for this DNS filter. These domains will always be accessible regardless of other filtering rules. Each entry should be a valid domain name (e.g., `example.com`).",
-							ElementType:         types.StringType,
-							Optional:            true,
-						},
-						"blocked_sites": schema.ListAttribute{
-							MarkdownDescription: "List of blocked sites for this DNS filter. These domains will be blocked regardless of other filtering rules. Each entry should be a valid domain name (e.g., `example.com`).",
-							ElementType:         types.StringType,
-							Optional:            true,
-						},
-						"blocked_tld": schema.ListAttribute{
-							MarkdownDescription: "List of blocked top-level domains (TLDs) for this DNS filter. All domains with these TLDs will be blocked. Each entry should be a valid TLD without the dot prefix (e.g., `xyz`, `info`).",
-							ElementType:         types.StringType,
-							Optional:            true,
-						},
-						"description": schema.StringAttribute{
-							MarkdownDescription: "Description of the DNS filter. This is used for documentation purposes only and does not affect functionality.",
-							Optional:            true,
-							Computed:            true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.UseStateForUnknown(),
-							},
-						},
-						"filter": schema.StringAttribute{
-							MarkdownDescription: "Filter type that determines the predefined filtering level. Valid values are:\n" +
-								"  * `none` - No predefined filtering\n" +
-								"  * `work` - Work-appropriate filtering that blocks adult content\n" +
-								"  * `family` - Family-friendly filtering that blocks adult content and other inappropriate sites",
-							Required: true,
-							Validators: []validator.String{
-								stringvalidator.OneOf("none", "work", "family"),
-							},
-						},
-						"name": schema.StringAttribute{
-							MarkdownDescription: "Name of the DNS filter. This is used to identify the filter in the UniFi interface.",
-							Required:            true,
-						},
-						"network_id": schema.StringAttribute{
-							MarkdownDescription: "Network ID this filter applies to. This should be a valid network ID from your UniFi configuration.",
-							Required:            true,
-						},
-					},
 				},
 			},
 			"enabled_categories": schema.ListAttribute{

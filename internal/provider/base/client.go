@@ -10,10 +10,9 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -21,7 +20,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
-	"github.com/filipowm/terraform-provider-unifi/internal/provider/utils"
 )
 
 type ClientConfig struct {
@@ -42,8 +40,6 @@ type ClientConfig struct {
 func NewClient(cfg *ClientConfig) (*Client, error) {
 	config := &unifi.ClientConfig{
 		URL:                      cfg.URL,
-		User:                     cfg.Username,
-		Password:                 cfg.Password,
 		APIKey:                   cfg.APIKey,
 		HttpRoundTripperProvider: cfg.HTTPConfigurer,
 		ValidationMode:           unifi.DisableValidation,
@@ -65,13 +61,6 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 			}
 			return newRetryRoundTripper(next, maxRetries)
 		}
-	}
-	if cfg.Username != "" && cfg.Password != "" {
-		config.User = cfg.Username
-		config.Password = cfg.Password
-		config.RememberMe = true
-	} else {
-		config.APIKey = cfg.APIKey
 	}
 	unifiClient, err := unifi.NewClient(config)
 	if err != nil {
@@ -95,36 +84,12 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 
 func NewRetryableUnifiClient(client unifi.Client) unifi.Client {
 	return &RetryableUnifiClient{
-		Client:     client,
-		loginMutex: sync.Mutex{},
+		Client: client,
 	}
 }
 
 type RetryableUnifiClient struct {
 	unifi.Client
-	loginMutex sync.Mutex
-}
-
-func (c *RetryableUnifiClient) relogin(err error) error {
-	c.loginMutex.Lock()
-	defer c.loginMutex.Unlock()
-	loginErr := c.Login()
-	if loginErr != nil {
-		return fmt.Errorf("tried relogging in after %w, but failed: %w", err, loginErr)
-	}
-	return nil
-}
-
-func (c *RetryableUnifiClient) Do(ctx context.Context, method string, apiPath string, reqBody interface{}, respBody interface{}) error {
-	err := c.Client.Do(ctx, method, apiPath, reqBody, respBody)
-	if err != nil && utils.IsServerErrorStatusCode(err, 401) {
-		err := c.relogin(err)
-		if err != nil {
-			return err
-		}
-		return c.Client.Do(ctx, method, apiPath, reqBody, respBody)
-	}
-	return err
 }
 
 type Client struct {

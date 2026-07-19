@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/go-unifi/unifi/features"
+	"github.com/filipowm/go-unifi/v2/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi/features"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"

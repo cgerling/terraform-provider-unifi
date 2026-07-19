@@ -6,8 +6,8 @@ import (
 	"maps"
 	"strconv"
 
-	"github.com/filipowm/go-unifi/unifi"
-	"github.com/filipowm/go-unifi/unifi/features"
+	"github.com/filipowm/go-unifi/v2/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi/features"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"

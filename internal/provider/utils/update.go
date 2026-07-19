@@ -3,7 +3,7 @@ package utils
 import (
 	"errors"
 
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 )
 
 // ReReadOnUpdateNotFound works around a go-unifi v1.9.3 defect shared by every

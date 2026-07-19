@@ -19,7 +19,7 @@ import (
 
 	"github.com/filipowm/terraform-provider-unifi/internal/provider/base"
 
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	tclog "github.com/testcontainers/testcontainers-go/log"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 )
@@ -280,10 +280,8 @@ func (te *TestEnvironment) newTestClient() (unifi.Client, error) {
 
 	client, err := unifi.NewClient(&unifi.ClientConfig{
 		URL:            te.Endpoint,
-		User:           user,
-		Password:       password,
-		VerifySSL:      false,
-		RememberMe:     true,
+		APIKey:         os.Getenv("UNIFI_API_KEY"),
+		SkipVerifySSL:  true,
 		ValidationMode: unifi.DisableValidation,
 		Logger:         unifi.NewDefaultLogger(unifi.WarnLevel),
 	})

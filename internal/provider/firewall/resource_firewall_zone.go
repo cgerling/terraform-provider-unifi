@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filipowm/go-unifi/unifi/features"
+	"github.com/filipowm/go-unifi/v2/unifi/features"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 
 	ut "github.com/filipowm/terraform-provider-unifi/internal/provider/types"
 
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"

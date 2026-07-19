@@ -14,7 +14,7 @@ import (
 	pt "github.com/filipowm/terraform-provider-unifi/internal/provider/testing"
 
 	"github.com/apparentlymart/go-cidr/cidr"
-	"github.com/filipowm/go-unifi/unifi"
+	"github.com/filipowm/go-unifi/v2/unifi"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 )
