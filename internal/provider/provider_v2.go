@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -179,6 +180,9 @@ func (p *unifiProvider) Configure(ctx context.Context, req provider.ConfigureReq
 		Site:       site,
 		Insecure:   insecure,
 		MaxRetries: maxRetries,
+		HTTPConfigurer: func() http.RoundTripper {
+			return createHTTPTransport(insecure, "unifi")
+		},
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to create UniFi client", err.Error())
