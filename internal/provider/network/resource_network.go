@@ -1462,9 +1462,10 @@ func resourceNetworkUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 	req.SiteID = site
 
-	// go-unifi v1.9.3's updateNetwork converts a successful-but-empty PUT response
-	// into unifi.ErrNotFound (see utils.ReReadOnUpdateNotFound / issue #98); re-read
-	// to tell a spurious error from a genuine out-of-band deletion.
+	// UniFi 10.x returns an empty data array on a successful networkconf PUT, which
+	// go-unifi v2 surfaces as `unexpected response: expected 1 Network, got 0` (v1.9.x
+	// mapped the same case to unifi.ErrNotFound; see utils.ReReadOnUpdateNotFound /
+	// issue #98). Re-read to tell that spurious error from a genuine out-of-band deletion.
 	resp, err := c.UpdateNetwork(ctx, site, req)
 	resp, found, err := utils.ReReadOnUpdateNotFound(resp, err, func() (*unifi.Network, error) {
 		return c.GetNetwork(ctx, site, req.ID)

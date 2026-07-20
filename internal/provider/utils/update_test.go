@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/filipowm/go-unifi/v2/unifi"
@@ -69,5 +70,35 @@ func TestReReadOnUpdateNotFound(t *testing.T) {
 		assert.ErrorIs(t, err, sentinel)
 		assert.False(t, found)
 		assert.Nil(t, got)
+	})
+
+	t.Run("v2 empty-echo error but object exists - re-reads and returns result", func(t *testing.T) {
+		// go-unifi v2's post-PUT guard on UniFi 10.x: successful write, empty data echo.
+		emptyEcho := fmt.Errorf("unexpected response: expected 1 Network, got %d", 0)
+		reRead := &obj{name: "from-reread"}
+		reReadCalled := false
+		got, found, err := ReReadOnUpdateNotFound((*obj)(nil), emptyEcho, func() (*obj, error) {
+			reReadCalled = true
+			return reRead, nil
+		})
+		assert.NoError(t, err)
+		assert.True(t, found)
+		assert.Same(t, reRead, got)
+		assert.True(t, reReadCalled, "v2 empty-echo must trigger a re-read")
+	})
+
+	t.Run("unexpected non-zero count is a real error - propagated, no re-read", func(t *testing.T) {
+		// "got 2" is a genuine response anomaly, not the empty-echo false negative,
+		// so it must not be masked by a re-read.
+		anomaly := fmt.Errorf("unexpected response: expected 1 Network, got %d", 2)
+		reReadCalled := false
+		got, found, err := ReReadOnUpdateNotFound((*obj)(nil), anomaly, func() (*obj, error) {
+			reReadCalled = true
+			return nil, nil
+		})
+		assert.ErrorIs(t, err, anomaly)
+		assert.False(t, found)
+		assert.Nil(t, got)
+		assert.False(t, reReadCalled, "a non-empty unexpected count must not be masked by a re-read")
 	})
 }

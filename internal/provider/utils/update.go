@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"regexp"
 
 	"github.com/filipowm/go-unifi/v2/unifi"
 )
@@ -32,14 +33,26 @@ import (
 // never by itself means "deleted"; only the re-read's own ErrNotFound does. That
 // is why the re-read GET is required rather than echoing the request struct.
 //
-// When the upstream go-unifi template is fixed and the pin bumped, update* stops
-// returning the spurious ErrNotFound and this helper becomes a harmless no-op.
+// go-unifi v2 no longer maps the empty echo to unifi.ErrNotFound; its generated
+// update* functions instead return a formatted `unexpected response: expected 1
+// <Type>, got 0` error (UniFi 10.x returns an empty data array on a successful
+// networkconf update). emptyUpdateEcho matches that shape so it is handled
+// identically to the historical ErrNotFound case: re-read to recover state.
+var emptyUpdateEcho = regexp.MustCompile(`unexpected response: expected 1 \w+, got 0\b`)
+
+// isSpuriousUpdateNotFound reports whether an update error is the "successful but
+// empty echo" false negative — either the v1.9.x ErrNotFound mapping or the v2
+// formatted error — that must be resolved by re-reading rather than surfaced.
+func isSpuriousUpdateNotFound(err error) bool {
+	return errors.Is(err, unifi.ErrNotFound) || emptyUpdateEcho.MatchString(err.Error())
+}
+
 func ReReadOnUpdateNotFound[T any](updated T, updateErr error, reRead func() (T, error)) (result T, found bool, err error) {
 	if updateErr == nil {
 		return updated, true, nil
 	}
 	var zero T
-	if !errors.Is(updateErr, unifi.ErrNotFound) {
+	if !isSpuriousUpdateNotFound(updateErr) {
 		return zero, false, updateErr
 	}
 	obj, reReadErr := reRead()
